@@ -1,0 +1,10 @@
+-r requirements.txt
+langchain>=0.3.0
+langchain-community>=0.3.0
+langchain-openai>=0.2.0
+langgraph>=0.2.0
+rank-bm25>=0.2.2
+faiss-cpu>=1.8.0
+sentence-transformers>=3.0.0
+requests>=2.32.0
+python-dotenv>=1.0.0

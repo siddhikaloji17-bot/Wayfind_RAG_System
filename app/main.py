@@ -61,7 +61,8 @@ class VerifyResponse(BaseModel):
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = BASE_DIR.parent
 SAMPLE_CORPUS_PATH = PROJECT_DIR / "data" / "sample_corpus.jsonl"
-DATA_DIR = Path(os.getenv("WAYFIND_DATA_DIR", str(PROJECT_DIR / "data")))
+_default_data_dir = "/tmp/wayfind" if os.getenv("VERCEL") else str(PROJECT_DIR / "data")
+DATA_DIR = Path(os.getenv("WAYFIND_DATA_DIR", _default_data_dir))
 CORPUS_PATH = DATA_DIR / "user_corpus.jsonl"
 MAX_UPLOAD_BYTES = 2_000_000
 _corpus_lock = RLock()

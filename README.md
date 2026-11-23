@@ -11,7 +11,7 @@ Wayfind is a local-first document research and claim-evidence workspace. It can 
 - **Evidence-first UI:** low-match questions abstain; relevance is shown as topical similarity, not a truth score.
 - **API:** FastAPI endpoints with interactive docs at `/docs`.
 
-The current Ask and Compare implementation uses a lightweight local BM25-style keyword scorer. It does not require an API key or make a model call. The optional `app/pipeline` modules contain the earlier LangChain/FAISS hybrid retrieval and claim-analysis pipeline.
+The current Ask, Verify, and Compare implementation uses a lightweight local BM25-style keyword scorer. It does not require an API key or make a model call. The optional `app/pipeline` modules contain the earlier LangChain/FAISS hybrid retrieval and claim-analysis pipeline; those modules are not currently wired into the web routes.
 
 ## Project layout
 
@@ -33,13 +33,18 @@ wayfind-rag-system/
 │       └── index.html           # Wayfind web interface
 ├── data/
 │   └── sample_corpus.jsonl      # Safe example corpus
+├── index.py                     # Vercel FastAPI entry point
+├── .python-version              # Vercel Python runtime
+├── vercel.json                  # Function duration limit
 ├── .env.example                # Configuration template (no credentials)
 ├── .gitignore
 ├── README.md
-└── requirements.txt
+├── requirements.txt            # Web application dependencies
+├── requirements-pipeline.txt   # Optional ML pipeline dependencies
+└── requirements-deploy.txt     # Render web runtime dependencies
 ```
 
-Uploaded documents and generated indexes stay in local `data/` files and are excluded from Git by default.
+Uploaded documents and generated indexes stay in local `data/` files and are excluded from Git by default. On Vercel, uploads use `/tmp/wayfind`; Vercel's function filesystem is temporary, so uploaded sources are not durable across cold starts or separate function instances.
 
 ## Run locally
 
@@ -67,11 +72,21 @@ cp .env.example .env
 uvicorn app.main:app --reload
 ```
 
-Open [http://localhost:8000](http://localhost:8000). API documentation is at [http://localhost:8000/docs](http://localhost:8000/docs).
+Open [http://localhost:8000](http://localhost:8000). API documentation is at [http://localhost:8000/docs](http://localhost:8000/docs). To install the optional hybrid retrieval pipeline locally, also run `pip install -r requirements-pipeline.txt`.
+
+## Deploy on Vercel
+
+The repository has a root FastAPI entry point at `index.py`; Vercel deploys the complete current web app (the Ask, Verify, Library, and Compare interface and its API routes) as a Python Function. `requirements.txt` intentionally contains only the web app's dependencies so the optional ML pipeline does not exceed the function bundle limit.
+
+1. Import `siddhikaloji17-bot/Wayfind_RAG_System` from GitHub at [vercel.com/new](https://vercel.com/new). Keep the project root at the repository root. Vercel should detect FastAPI and Python 3.12 from the repository files.
+2. In the project's environment variables, set `WAYFIND_ENV=production`, `WAYFIND_ACCESS_USERNAME`, and a strong unique `WAYFIND_ACCESS_PASSWORD` for Production. Keep the credentials out of GitHub.
+3. Deploy. Open the resulting `vercel.app` URL to use the web interface; `/health` is only the status endpoint.
+
+The Hobby plan is free within its included usage limits. The Vercel Function filesystem is read-only except for temporary `/tmp` storage, so uploaded documents are not durable on this setup. Use durable object storage (for example Vercel Blob) before relying on uploads across function instances or cold starts. See Vercel's [FastAPI guide](https://vercel.com/docs/frameworks/backend/fastapi), [Python runtime limits](https://vercel.com/docs/functions/runtimes), [Hobby plan](https://vercel.com/docs/plans/hobby), and [Blob pricing](https://vercel.com/docs/vercel-blob/usage-and-pricing).
 
 ## Deploy on Render
 
-The repository includes a Render Blueprint at `render.yaml`. It deploys the FastAPI app on Render's free tier in Virginia, installs only the web runtime dependencies from `requirements-deploy.txt`, and enables HTTP Basic Authentication for the site and API. The `/health` endpoint remains available to Render's health checker. Install `requirements.txt` only if you also need the optional LangChain/FAISS pipeline locally.
+The repository includes a Render Blueprint at `render.yaml`. It deploys the FastAPI app on Render's free tier in Virginia, installs only the web runtime dependencies from `requirements-deploy.txt`, and enables HTTP Basic Authentication for the site and API. The `/health` endpoint remains available to Render's health checker. Install `requirements-pipeline.txt` if you need the optional LangChain/FAISS pipeline locally.
 
 1. In Render, choose **New → Blueprint** and connect `siddhikaloji17-bot/Wayfind_RAG_System` on the `main` branch.
 2. Review the Blueprint resources and enter a username and a strong, unique password when Render asks for `WAYFIND_ACCESS_USERNAME` and `WAYFIND_ACCESS_PASSWORD`. Keep these values in Render's environment settings, not in GitHub.
