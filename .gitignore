@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.egg-info/
+.venv/
+venv/
+env/
+build/
+dist/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Local user documents and generated retrieval indexes
+data/user_corpus.jsonl
+data/bm25_index.pkl
+data/faiss_index/
+*.faiss
+*.pkl
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
