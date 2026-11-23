@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: wayfind-rag-system
+    runtime: python
+    plan: 0.5c-512mb
+    region: singapore
+    buildCommand: pip install -r requirements-deploy.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: WAYFIND_ENV
+        value: production
+      - key: WAYFIND_DATA_DIR
+        value: /var/data
+      - key: WAYFIND_ACCESS_USERNAME
+        sync: false
+      - key: WAYFIND_ACCESS_PASSWORD
+        sync: false
+    disk:
+      name: wayfind-user-documents
+      mountPath: /var/data
+      sizeGB: 1

@@ -3,6 +3,9 @@ import json
 import math
 import os
 import re
+import base64
+import binascii
+import hmac
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,7 +15,7 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 app = FastAPI(
@@ -57,15 +60,48 @@ class VerifyResponse(BaseModel):
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = BASE_DIR.parent
-CORPUS_PATH = PROJECT_DIR / "data" / "user_corpus.jsonl"
+SAMPLE_CORPUS_PATH = PROJECT_DIR / "data" / "sample_corpus.jsonl"
+DATA_DIR = Path(os.getenv("WAYFIND_DATA_DIR", str(PROJECT_DIR / "data")))
+CORPUS_PATH = DATA_DIR / "user_corpus.jsonl"
 MAX_UPLOAD_BYTES = 2_000_000
 _corpus_lock = RLock()
+_app_environment = os.getenv("WAYFIND_ENV", "development").casefold()
+_access_username = os.getenv("WAYFIND_ACCESS_USERNAME", "")
+_access_password = os.getenv("WAYFIND_ACCESS_PASSWORD", "")
+
+if _app_environment == "production" and (not _access_username or not _access_password):
+    raise RuntimeError("Set WAYFIND_ACCESS_USERNAME and WAYFIND_ACCESS_PASSWORD in production.")
+
+
+@app.middleware("http")
+async def require_access_credentials(request, call_next):
+    """Protect a public deployment while leaving its platform health check open."""
+    if request.url.path != "/health" and _app_environment == "production":
+        auth = request.headers.get("authorization", "")
+        try:
+            scheme, encoded = auth.split(" ", 1)
+            decoded = base64.b64decode(encoded, validate=True).decode("utf-8")
+            supplied_user, separator, supplied_password = decoded.partition(":")
+            valid = (
+                scheme.casefold() == "basic" and separator
+                and hmac.compare_digest(supplied_user, _access_username)
+                and hmac.compare_digest(supplied_password, _access_password)
+            )
+        except (ValueError, UnicodeDecodeError, binascii.Error):
+            valid = False
+        if not valid:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Sign in to use Wayfind."},
+                headers={"WWW-Authenticate": 'Basic realm="Wayfind", charset="UTF-8"'},
+            )
+    return await call_next(request)
 
 
 def _load_documents() -> list[dict]:
     """Load the shipped sample corpus plus user-added documents."""
     docs = []
-    for path in (PROJECT_DIR / "data" / "sample_corpus.jsonl", CORPUS_PATH):
+    for path in (SAMPLE_CORPUS_PATH, CORPUS_PATH):
         if not path.is_file():
             continue
         with path.open("r", encoding="utf-8") as stream:
@@ -223,7 +259,7 @@ def compare(request: CompareRequest):
     for doc_id in request.document_ids:
         hits = _retrieve(request.question, 1, [doc_id])
         doc = hits[0] if hits else next(d for d in docs if str(d.get("document_id", d.get("id"))) == doc_id)
-        rows.append({"id": doc_id, "title": doc.get("source", doc.get("title")), "source": doc.get("source"),
+        rows.append({"id": doc_id, "title": doc.get("title", doc.get("source")), "source": doc.get("source"),
                      "relevance": hits[0]["relevance"] if hits else 0,
                      "excerpt": hits[0].get("text", "")[:500] if hits else "No matching passage found."})
     rows.sort(key=lambda row: row["relevance"], reverse=True)
