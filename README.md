@@ -71,13 +71,13 @@ Open [http://localhost:8000](http://localhost:8000). API documentation is at [ht
 
 ## Deploy on Render
 
-The repository includes a Render Blueprint at `render.yaml`. It deploys the FastAPI app in Singapore, installs only the web runtime dependencies from `requirements-deploy.txt`, mounts a 1 GB persistent disk at `/var/data` for uploaded documents, and enables HTTP Basic Authentication for the site and API. The `/health` endpoint remains available to Render's health checker. Install `requirements.txt` only if you also need the optional LangChain/FAISS pipeline locally.
+The repository includes a Render Blueprint at `render.yaml`. It deploys the FastAPI app on Render's free tier in Virginia, installs only the web runtime dependencies from `requirements-deploy.txt`, and enables HTTP Basic Authentication for the site and API. The `/health` endpoint remains available to Render's health checker. Install `requirements.txt` only if you also need the optional LangChain/FAISS pipeline locally.
 
 1. In Render, choose **New → Blueprint** and connect `siddhikaloji17-bot/Wayfind_RAG_System` on the `main` branch.
 2. Review the Blueprint resources and enter a username and a strong, unique password when Render asks for `WAYFIND_ACCESS_USERNAME` and `WAYFIND_ACCESS_PASSWORD`. Keep these values in Render's environment settings, not in GitHub.
 3. Create the resources and wait for the first deploy to finish. Render will provide the live `onrender.com` URL; opening it prompts for the Basic Auth credentials.
 
-This Blueprint uses paid compute and a persistent disk. Render's documented persistent disk rate is $0.25 per GB per month; compute is billed separately according to the selected service plan. Render's free web services do not support persistent disks and their files are discarded on restarts or spin-down, so the free plan is unsuitable for keeping uploaded sources. Check the current [Render pricing](https://render.com/pricing) before creating the service. See the official [FastAPI deploy guide](https://render.com/docs/deploy-fastapi), [persistent disk guide](https://render.com/docs/disks), and [free plan limitations](https://render.com/docs/free).
+This free demo does not include a persistent disk. The app's uploaded corpus is stored on Render's ephemeral filesystem, so uploads can disappear when the service restarts or spins down. Choose a paid plan and attach a persistent disk if uploaded sources must survive restarts. Check the current [Render pricing](https://render.com/pricing) before changing plans. See the official [FastAPI deploy guide](https://render.com/docs/deploy-fastapi), [persistent disk guide](https://render.com/docs/disks), and [free plan limitations](https://render.com/docs/free).
 
 ## API routes
 
